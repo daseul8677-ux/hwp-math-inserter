@@ -146,9 +146,13 @@ class HwpWriter(object):
 
         if not info["hwp_monikers"]:
             info["notes"].append(
-                "실행 중인 한글이 목록에 없습니다. 한글이 정말 실행 중인지, "
-                "그리고 이 앱과 한글 중 하나만 '관리자 권한으로 실행' 되어 있지는 않은지 확인해 주세요. "
-                "(권한이 다르면 서로를 보지 못합니다)")
+                "실행 중인 한글이 목록에 없습니다. 아래를 차례로 확인해 주세요.")
+            info["notes"].append(
+                "  1) 한글에 문서가 열려 있나요? 빈 시작 화면만 떠 있으면 "
+                "한글이 다른 프로그램에 보이지 않습니다. 문서를 하나 열어 주세요.")
+            info["notes"].append(
+                "  2) 이 앱과 한글 중 하나만 '관리자 권한으로 실행' 되어 있지는 않나요? "
+                "권한이 다르면 서로를 보지 못합니다. 둘 다 그냥 더블클릭으로 실행하세요.")
         return info
 
     def _alive(self):
@@ -170,8 +174,11 @@ class HwpWriter(object):
             self.hwp = obj
         elif not self._alive():
             if not launch_if_needed:
-                raise HwpError("켜져 있는 한글을 찾지 못했습니다. "
-                               "한글에서 문제를 넣을 문서를 열고 커서를 둔 뒤 다시 눌러 주세요.")
+                raise HwpError(
+                    "켜져 있는 한글을 찾지 못했습니다. "
+                    "한글에서 문서를 하나 열어 주세요. "
+                    "(한글은 빈 시작 화면만 떠 있으면 다른 프로그램에 보이지 않습니다. "
+                    "문서를 연 뒤 [새로고침] 을 눌러 주세요)")
             try:
                 self.hwp = win32.Dispatch("HWPFrame.HwpObject")
                 self.hwp.XHwpWindows.Item(0).Visible = True
