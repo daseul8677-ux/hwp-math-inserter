@@ -135,23 +135,32 @@ def apply_and_restart(new_exe):
         raise UpdateError("설치본(exe)에서만 업데이트할 수 있습니다.")
     target = exe_path()
 
+    log = os.path.join(tempfile.gettempdir(), "hwpmath_update.log")
     ps = (
+        "$log = %s\n"
+        "function Say($m) { Add-Content -LiteralPath $log -Value \"$(Get-Date -Format o)  $m\" }\n"
+        "Say 'start'\n"
         "Start-Sleep -Seconds 3\n"
         "$src = %s\n"
         "$dst = %s\n"
+        "$ok = $false\n"
         "for ($i = 0; $i -lt 60; $i++) {\n"
-        "  try { Move-Item -LiteralPath $src -Destination $dst -Force; break }\n"
+        "  try { Move-Item -LiteralPath $src -Destination $dst -Force; $ok = $true; break }\n"
         "  catch { Start-Sleep -Seconds 2 }\n"
         "}\n"
-        "if (Test-Path -LiteralPath $dst) { Start-Process -FilePath $dst }\n"
-    ) % (_ps_quote(new_exe), _ps_quote(target))
+        "Say \"moved=$ok\"\n"
+        "if ($ok) { Start-Process -FilePath $dst; Say 'relaunched' }\n"
+        "else { Say 'move failed' }\n"
+    ) % (_ps_quote(log), _ps_quote(new_exe), _ps_quote(target))
 
     encoded = base64.b64encode(ps.encode("utf-16-le")).decode("ascii")
     powershell = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"),
                               "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
     if not os.path.exists(powershell):
         powershell = "powershell"
-    creation = 0x00000008 | 0x08000000                  # DETACHED_PROCESS | NO_WINDOW
+    # DETACHED_PROCESS 와 CREATE_NO_WINDOW 는 같이 쓸 수 없다(프로세스 생성 자체가 실패).
+    # 창만 숨기면 충분하고, 부모가 꺼져도 자식은 계속 돈다.
+    creation = 0x08000000                               # CREATE_NO_WINDOW
     # 창 없는 exe 는 표준 입출력이 없어서, 넘겨줄 것을 명시해야 자식이 뜬다
     subprocess.Popen(
         [powershell, "-NoProfile", "-NonInteractive",
