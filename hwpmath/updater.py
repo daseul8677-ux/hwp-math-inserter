@@ -11,6 +11,7 @@ latest.json 모양:
      "notes": "무엇이 바뀌었는지 한 줄"}
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -61,8 +62,9 @@ def check(url):
     if r.status_code != 200:
         raise UpdateError("업데이트 확인 실패(%s)" % r.status_code)
     try:
-        data = r.json()
-    except ValueError:
+        # 파일 앞에 BOM 이 붙어 있어도 읽히도록 utf-8-sig 로 푼다
+        data = json.loads(r.content.decode("utf-8-sig"))
+    except (ValueError, UnicodeDecodeError):
         raise UpdateError("업데이트 안내 파일을 읽지 못했습니다.")
     ver = str(data.get("version", "")).strip()
     if not ver or not data.get("url"):

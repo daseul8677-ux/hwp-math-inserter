@@ -58,8 +58,10 @@ if ($LASTEXITCODE -ne 0) {
 
 # 4) latest.json 갱신 (앱이 이 파일을 보고 새 버전을 알아챈다)
 $dl = "https://github.com/$repo/releases/download/$tag/HwpMathInserter.exe"
-[ordered]@{ version = $Version; url = $dl; notes = $noteText } |
-  ConvertTo-Json | Set-Content -Path "latest.json" -Encoding utf8
+$json = [ordered]@{ version = $Version; url = $dl; notes = $noteText } | ConvertTo-Json
+# BOM 없이 저장해야 앱이 읽을 수 있다
+[System.IO.File]::WriteAllText(
+  (Join-Path $PSScriptRoot "latest.json"), $json, (New-Object Text.UTF8Encoding($false)))
 Write-Host "latest.json 갱신"
 
 # 5) 밀어넣기
