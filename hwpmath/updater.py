@@ -50,28 +50,55 @@ def is_newer(latest, current=VERSION):
     return _tuple(latest) > _tuple(current)
 
 
+def _from_github_api(data):
+    """GitHub 릴리스 API 응답에서 판 번호와 내려받을 주소를 뽑는다."""
+    ver = str(data.get("tag_name", "")).strip().lstrip("vV")
+    url = ""
+    for asset in data.get("assets", []):
+        if str(asset.get("name", "")).lower().endswith(".exe"):
+            url = asset.get("browser_download_url", "")
+            break
+    notes = (data.get("body") or data.get("name") or "").strip()
+    if len(notes) > 200:
+        notes = notes[:200] + "…"
+    return ver, url, notes
+
+
 def check(url):
-    """새 판이 있는지 본다. 없으면 None."""
+    """새 판이 있는지 본다. 없으면 None.
+
+    GitHub 릴리스 API 주소면 그걸 그대로 쓰고,
+    직접 만든 안내 파일(latest.json) 주소면 그 내용을 읽는다.
+
+    (raw.githubusercontent 는 몇 분간 옛 내용을 캐시해서 주기 때문에
+     기본값은 캐시가 없는 릴리스 API 를 쓴다.)
+    """
     if not url:
         return None
     try:
         r = requests.get(url, timeout=TIMEOUT,
-                         headers={"Cache-Control": "no-cache"})
+                         headers={"Cache-Control": "no-cache", "Pragma": "no-cache",
+                                  "Accept": "application/vnd.github+json"})
     except requests.RequestException as e:
         raise UpdateError("업데이트 확인 실패(인터넷): %s" % e)
     if r.status_code != 200:
         raise UpdateError("업데이트 확인 실패(%s)" % r.status_code)
     try:
-        # 파일 앞에 BOM 이 붙어 있어도 읽히도록 utf-8-sig 로 푼다
         data = json.loads(r.content.decode("utf-8-sig"))
     except (ValueError, UnicodeDecodeError):
         raise UpdateError("업데이트 안내 파일을 읽지 못했습니다.")
-    ver = str(data.get("version", "")).strip()
-    if not ver or not data.get("url"):
-        raise UpdateError("업데이트 안내 파일에 내용이 부족합니다.")
+
+    if "tag_name" in data:
+        ver, dl, notes = _from_github_api(data)
+    else:
+        ver = str(data.get("version", "")).strip()
+        dl = data.get("url", "")
+        notes = data.get("notes", "")
+    if not ver or not dl:
+        raise UpdateError("업데이트 안내에 내용이 부족합니다.")
     if not is_newer(ver):
         return None
-    return {"version": ver, "url": data["url"], "notes": data.get("notes", "")}
+    return {"version": ver, "url": dl, "notes": notes}
 
 
 def download(url, dest):
