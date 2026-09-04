@@ -1,0 +1,13 @@
+build/
+dist/
+__pycache__/
+*.pyc
+
+# 개인 설정 (Gemini API 키가 들어 있음 — 절대 올리지 않는다)
+config.json
+
+# 점검·시험 결과물
+점검결과.*
+테스트결과.*
+웹테스트결과.*
+hwpmath-setup.zip

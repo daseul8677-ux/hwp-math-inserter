@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>문제 캡쳐 → 한글 삽입기</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<style>
+  :root{
+    --bg:#0e1013; --panel:#16191f; --panel2:#1c2028; --line:#2a2f39;
+    --tx:#e7eaf0; --dim:#9aa3b2; --accent:#f0a13c; --blue:#3b82f6;
+    --ok:#34d399; --bad:#f87171; --wait:#c9a227;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--tx);
+       font:14px/1.6 "Pretendard","맑은 고딕",system-ui,sans-serif}
+  a{color:var(--blue)}
+  header{display:flex;align-items:center;gap:10px;padding:13px 22px;
+         border-bottom:1px solid var(--line);background:var(--panel);
+         position:sticky;top:0;z-index:20}
+  header .brand{font-weight:700;color:var(--accent)}
+  header .spacer{flex:1}
+  .badge{font-size:12px;padding:4px 10px;border-radius:999px;
+         border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+  .badge.on{color:var(--ok);border-color:#2b5c48}
+  .badge.off{color:var(--bad);border-color:#5c2b2b}
+  .wrap{max-width:1240px;margin:0 auto;padding:26px 22px 80px}
+  h1{font-size:24px;margin:0 0 6px;color:var(--accent)}
+  .sub{color:var(--dim);margin:0 0 22px;font-size:13.5px}
+  button{font:inherit;border-radius:8px;border:1px solid var(--line);
+         background:var(--panel2);color:var(--tx);padding:8px 14px;cursor:pointer}
+  button:hover:not(:disabled){border-color:#3c4453}
+  button:disabled{opacity:.45;cursor:default}
+  button.primary{background:linear-gradient(180deg,#4d92f8,#2f6fd0);border-color:#2f6fd0;font-weight:600}
+  button.ghost{background:transparent}
+  button.sm{padding:4px 10px;font-size:12.5px}
+  #drop{border:2px dashed var(--line);border-radius:14px;padding:48px 20px;text-align:center;
+        cursor:pointer;transition:.15s;background:var(--panel)}
+  #drop:hover,#drop.hot{border-color:var(--blue);background:#141a24}
+  #drop h2{margin:0 0 8px;font-size:18px}
+  #drop p{margin:4px 0;color:var(--dim);font-size:13px}
+  kbd{background:#232833;border:1px solid var(--line);border-bottom-width:2px;
+      border-radius:5px;padding:1px 6px;font-size:12px}
+  .target{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);
+          border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13px;
+          color:var(--dim)}
+  .target select{width:auto;min-width:260px;max-width:520px}
+  .target .dimnote{font-size:12.5px;color:#727c8c}
+  .toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:20px 0 14px;
+           position:sticky;top:52px;z-index:10;background:var(--bg);padding:8px 0}
+  .count{color:var(--dim);font-size:13px;margin-right:4px}
+  .prog{flex:1;min-width:120px;height:6px;background:#20242c;border-radius:99px;overflow:hidden}
+  .prog i{display:block;height:100%;width:0;background:var(--blue);transition:width .3s}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+        margin-bottom:14px;overflow:hidden}
+  .card>.hd{display:flex;align-items:center;gap:9px;padding:9px 13px;
+            border-bottom:1px solid var(--line);font-size:13px}
+  .card>.hd .no{font-weight:700;color:var(--accent)}
+  .card>.hd .spacer{flex:1}
+  .card>.bd{display:grid;grid-template-columns:190px 1fr 1fr;gap:14px;padding:14px}
+  .card.folded>.bd{display:none}
+  @media(max-width:1000px){.card>.bd{grid-template-columns:1fr}}
+  .thumb{background:#0b0d11;border:1px solid var(--line);border-radius:8px;padding:6px;
+         display:flex;align-items:center;justify-content:center;max-height:230px;overflow:hidden}
+  .thumb img{max-width:100%;max-height:216px;border-radius:4px;cursor:zoom-in}
+  textarea{width:100%;height:100%;min-height:200px;resize:vertical;background:#10131a;color:var(--tx);
+           border:1px solid var(--line);border-radius:8px;padding:11px;
+           font:12.5px/1.7 "D2Coding",Consolas,monospace}
+  textarea:focus{outline:none;border-color:var(--blue)}
+  .paper{background:#fbfbf7;color:#15171c;border-radius:8px;padding:16px 18px;min-height:200px;
+         font-family:"바탕","Batang",serif;font-size:14.5px;line-height:1.95;overflow-x:auto}
+  .paper .eq{text-align:center;margin:12px 0}
+  .paper .choices{display:flex;flex-wrap:wrap;gap:22px}
+  .paper .blank{height:10px}
+  .paper .condbox{border:1px solid #15171c;border-radius:2px;padding:10px 14px;margin:10px 0}
+  .paper .tblwrap{display:flex;justify-content:center;margin:12px 0}
+  .paper table{border-collapse:collapse}
+  .paper td{border:1px solid #15171c;padding:3px 14px;text-align:center;white-space:nowrap}
+  .chip{font-size:11.5px;padding:2px 9px;border-radius:99px;border:1px solid var(--line);color:var(--dim)}
+  .chip.ocr{color:var(--wait);border-color:#5c4f1f}
+  .chip.done{color:var(--ok);border-color:#2b5c48}
+  .chip.err{color:var(--bad);border-color:#5c2b2b}
+  .err-msg{color:var(--bad);font-size:12.5px;padding:0 14px 12px}
+  .hint{color:var(--dim);font-size:12.5px;margin-top:12px}
+  .hint code{background:#1b1f27;padding:1px 6px;border-radius:4px;color:#cfd6e2}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#222833;
+         border:1px solid var(--line);border-radius:10px;padding:11px 18px;
+         box-shadow:0 8px 28px #0009;opacity:0;pointer-events:none;transition:.2s;max-width:80vw;z-index:50}
+  .toast.show{opacity:1}
+  .toast.err{border-color:#6b3030;color:#ffc9c9}
+  .toast.ok{border-color:#2b5c48;color:#bdf3dc}
+  dialog{background:var(--panel);color:var(--tx);border:1px solid var(--line);
+         border-radius:14px;padding:0;width:min(540px,92vw)}
+  dialog::backdrop{background:#000a}
+  dialog .hd{padding:15px 20px;border-bottom:1px solid var(--line);font-weight:600}
+  dialog .bd{padding:18px 20px;max-height:68vh;overflow:auto}
+  dialog .ft{padding:13px 20px;border-top:1px solid var(--line);display:flex;
+             justify-content:flex-end;gap:8px}
+  .row{display:grid;grid-template-columns:180px 1fr;gap:12px;align-items:center;margin-bottom:11px}
+  .row label{color:var(--dim);font-size:13px}
+  input,select{width:100%;background:#10131a;color:var(--tx);border:1px solid var(--line);
+               border-radius:7px;padding:8px 10px;font:inherit}
+  input:focus,select:focus{outline:none;border-color:var(--blue)}
+  .check{display:flex;align-items:center;gap:8px;margin:7px 0;color:var(--dim);font-size:13px}
+  .check input{width:auto}
+  .spin{width:14px;height:14px;border:2px solid #ffffff40;border-top-color:#fff;border-radius:50%;
+        display:inline-block;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #lightbox{position:fixed;inset:0;background:#000c;display:none;align-items:center;
+            justify-content:center;z-index:60;cursor:zoom-out}
+  #lightbox.show{display:flex}
+  #lightbox img{max-width:94vw;max-height:94vh;border-radius:6px}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="brand">문제 캡쳐 → 한글 삽입기</span>
+  <span class="badge" id="verBadge" title="지금 쓰는 판 번호">v…</span>
+  <span class="spacer"></span>
+  <span id="hwpBadge" class="badge">한글 확인 중…</span>
+  <button class="ghost" id="btnSettings">설정</button>
+  <button class="ghost" id="btnQuit" title="앱을 완전히 끝냅니다">종료</button>
+</header>
+
+<div id="upbar" style="display:none;background:#16301f;border-bottom:1px solid #2b5c48;
+     color:#bdf3dc;padding:11px 22px;font-size:13.5px;display:none">
+  <span id="upmsg"></span>
+  <button class="ghost sm" id="btnUpdate" style="margin-left:12px">지금 업데이트</button>
+  <button class="ghost sm" id="btnUpLater">나중에</button>
+</div>
+
+<div id="offline" style="display:none;background:#3a1e1e;border-bottom:1px solid #6b3030;
+     color:#ffc9c9;padding:11px 22px;font-size:13.5px">
+  앱 서버와 연결이 끊겼습니다. <b>문제캡쳐한글삽입기</b> 를 다시 실행한 뒤
+  이 화면을 새로고침(F5)하세요. 지금까지 인식한 내용은 새로고침하면 사라집니다.
+</div>
+
+<div class="wrap">
+  <h1>캡쳐한 문제를 한글에 그대로</h1>
+  <p class="sub">여러 문제를 한꺼번에 붙여넣으면 <b>동시에 인식</b>합니다.
+     확인한 뒤 한 번에 한글 커서 자리로 넣으세요. 수식은 그림이 아니라 <b>한글 수식 개체</b>로 들어갑니다.</p>
+
+  <div id="drop">
+    <h2>문제 이미지를 드래그 &amp; 드롭 (여러 장 한꺼번에)</h2>
+    <p>클릭해서 파일 선택, 또는 <kbd>Ctrl</kbd>+<kbd>V</kbd> 로 붙여넣기</p>
+    <p><kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> 로 한 문제씩 캡쳐해 계속 붙여넣으면 아래에 쌓입니다</p>
+    <input type="file" id="file" accept="image/*" multiple hidden>
+  </div>
+
+  <div class="target">
+    <span>넣을 한글 문서</span>
+    <select id="docSel"><option value="">한글 확인 중…</option></select>
+    <button class="ghost sm" id="btnDocs">새로고침</button>
+    <button class="ghost sm" id="btnDiag" style="display:none">왜 못 찾나요?</button>
+    <button class="ghost sm" id="btnLaunch" style="display:none">새 한글 창 열기</button>
+    <span class="dimnote">한글에서 그 문서의 원하는 자리에 커서를 두고 넣으세요</span>
+  </div>
+
+  <div class="toolbar" id="toolbar" style="display:none">
+    <span class="count" id="count"></span>
+    <button class="primary" id="btnOcrAll">모두 인식</button>
+    <button id="btnInsertAll">모두 한글에 삽입 <kbd>Ctrl</kbd>+<kbd>Enter</kbd></button>
+    <button class="ghost sm" id="btnAdd">＋ 더 넣기</button>
+    <button class="ghost sm" id="btnFold">모두 접기</button>
+    <button class="ghost sm" id="btnClear">모두 지우기</button>
+    <span class="prog"><i id="progBar"></i></span>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="hint" id="legend" style="display:none">
+    <code>$...$</code> 글 속 수식 &nbsp;·&nbsp;
+    <code>[[EQ]]</code> 따로 떨어진 수식 줄 &nbsp;·&nbsp;
+    <code>[[CH]] a | b | c</code> 객관식 보기 &nbsp;·&nbsp;
+    <code>[[BOX]] … [[/BOX]]</code> 조건 상자 &nbsp;·&nbsp;
+    <code>\boxed{(가)}</code> 수식 속 빈칸 네모 &nbsp;·&nbsp;
+    빈 줄은 그대로 빈 줄로 들어갑니다
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="lightbox"><img alt=""></div>
+
+<dialog id="dlg">
+  <div class="hd">설정</div>
+  <div class="bd">
+    <div class="row"><label>Gemini API 키</label>
+      <input type="password" id="cKey" placeholder="여기에 API 키를 넣으세요"></div>
+    <div class="row"><label>모델</label>
+      <select id="cModel">
+        <option>gemini-2.5-flash</option>
+        <option>gemini-2.5-pro</option>
+        <option>gemini-2.5-flash-lite</option>
+      </select></div>
+    <div class="row"><label>동시에 인식할 개수</label>
+      <select id="cPara"><option>1</option><option>2</option><option>3</option>
+        <option>4</option><option>5</option></select></div>
+    <div class="row"><label>수식 글자 크기(pt)</label><input id="cSize" type="number" step="0.5" min="5" max="30"></div>
+    <div class="row"><label>독립 수식 문단 정렬</label>
+      <select id="cAlign"><option value="Center">가운데</option><option value="Left">왼쪽</option>
+        <option value="Justify">양쪽 혼합</option></select></div>
+    <div class="row"><label>수식 왼쪽 들여쓰기(mm)</label><input id="cIndent" type="number" step="1" min="0" max="80"></div>
+    <div class="row"><label>보기 사이 간격</label>
+      <select id="cSep"><option value="tab">탭</option><option value="space">공백</option></select></div>
+    <div class="row"><label>문제 사이 빈 줄</label><input id="cGap" type="number" step="1" min="0" max="5"></div>
+    <div class="row"><label>인식 추가 지시</label><input id="cHint" placeholder="예: 원문자 대신 (1) 로 써 줘"></div>
+    <div class="row"><label>업데이트 확인 주소</label>
+      <input id="cUpdate" placeholder="latest.json 주소 (비워 두면 자동 업데이트 안 함)"></div>
+    <label class="check"><input type="checkbox" id="cB1"> 수식 앞에 빈 줄</label>
+    <label class="check"><input type="checkbox" id="cB2"> 수식 뒤에 빈 줄</label>
+    <hr style="border:none;border-top:1px solid var(--line);margin:15px 0">
+    <label class="check"><input type="checkbox" id="cAutoOcr"> 붙여넣으면 바로 인식</label>
+    <label class="check"><input type="checkbox" id="cAutoIns"> 인식이 끝나면 바로 한글에 삽입 (확인 없이)</label>
+    <p class="hint" style="margin-top:14px">
+      키 발급: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> (무료)<br>
+      무료 등급은 분당·일일 요청 제한이 있습니다. 한 번에 많이 돌리면 제한에 걸릴 수 있어
+      동시 개수는 3 정도를 권합니다.
+    </p>
+  </div>
+  <div class="ft">
+    <button class="ghost" id="cTest" style="margin-right:auto">한글 연결 점검</button>
+    <button class="ghost" id="cCancel">취소</button>
+    <button class="primary" id="cSave">저장</button>
+  </div>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+let items = [];          // {id, image, markup, status:'idle'|'ocr'|'done'|'err', error}
+let seq = 0, inserting = false;
+
+const local = {
+  get autoOcr(){ return localStorage.getItem("autoOcr") !== "0"; },
+  set autoOcr(v){ localStorage.setItem("autoOcr", v ? "1" : "0"); },
+  get autoIns(){ return localStorage.getItem("autoIns") === "1"; },
+  set autoIns(v){ localStorage.setItem("autoIns", v ? "1" : "0"); },
+  get para(){ return parseInt(localStorage.getItem("para") || "3", 10); },
+  set para(v){ localStorage.setItem("para", String(v)); },
+};
+
+function toast(msg, kind){
+  const t = $("#toast");
+  t.textContent = msg;
+  t.className = "toast show " + (kind || "");
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.className = "toast", 3400);
+}
+function setOffline(off){
+  $("#offline").style.display = off ? "" : "none";
+  if(off){ const b = $("#hwpBadge"); b.className = "badge off"; b.textContent = "앱 서버 끊김"; }
+}
+async function api(path, body){
+  let r;
+  try{
+    r = await fetch(path, body === undefined ? {} : {
+      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+  }catch(_){
+    // fetch 자체가 실패 = 서버가 꺼졌거나 응답을 못 함
+    setOffline(true);
+    throw new Error("앱 서버와 연결이 끊겼습니다. 앱을 다시 실행한 뒤 이 화면을 새로고침(F5)하세요.");
+  }
+  setOffline(false);
+  const d = await r.json().catch(() => ({error:"응답을 읽지 못했습니다."}));
+  if(!r.ok) throw new Error(d.error || ("오류 " + r.status));
+  return d;
+}
+
+/* ---------- 이미지 받기 ---------- */
+function readAsDataURL(f){
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = e => res(e.target.result);
+    fr.onerror = rej;
+    fr.readAsDataURL(f);
+  });
+}
+// 너무 큰 캡쳐는 줄여서 보낸다 (업로드 실패 방지 + 인식 속도)
+function shrink(dataUrl, max = 2000){
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, max / Math.max(img.width, img.height));
+      if(s >= 1) return res(dataUrl);
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * s);
+      c.height = Math.round(img.height * s);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      res(c.toDataURL("image/png"));
+    };
+    img.onerror = () => res(dataUrl);
+    img.src = dataUrl;
+  });
+}
+async function addFiles(files){
+  const imgs = [...files].filter(f => f && f.type.startsWith("image/"));
+  if(!imgs.length) return;
+  for(const f of imgs){
+    try{
+      const raw = await readAsDataURL(f);
+      const img = await shrink(raw);
+      items.push({id: ++seq, image: img, markup: "", status: "idle", error: ""});
+    }catch(_){ toast("이미지를 읽지 못했습니다.", "err"); }
+  }
+  render();
+  if(local.autoOcr) ocrAll();
+}
+$("#drop").onclick = () => $("#file").click();
+$("#btnAdd").onclick = () => $("#file").click();
+$("#file").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
+["dragenter","dragover"].forEach(ev => document.addEventListener(ev, e => {
+  if(e.dataTransfer?.types?.includes("Files")){ e.preventDefault(); $("#drop").classList.add("hot"); }}));
+["dragleave","drop"].forEach(ev => document.addEventListener(ev, e => {
+  $("#drop").classList.remove("hot"); }));
+document.addEventListener("drop", e => {
+  if(e.dataTransfer?.files?.length){ e.preventDefault(); addFiles(e.dataTransfer.files); }});
+window.addEventListener("paste", e => {
+  const files = [...(e.clipboardData?.items || [])]
+    .filter(i => i.type.startsWith("image/")).map(i => i.getAsFile());
+  if(files.length){ e.preventDefault(); addFiles(files); }
+});
+
+/* ---------- 그리기 ---------- */
+function chip(it){
+  if(it.status === "ocr")  return '<span class="chip ocr"><span class="spin"></span>인식 중</span>';
+  if(it.status === "done") return '<span class="chip done">인식 완료</span>';
+  if(it.status === "err")  return '<span class="chip err">실패</span>';
+  return '<span class="chip">대기</span>';
+}
+function render(){
+  const list = $("#list");
+  list.innerHTML = "";
+  const has = items.length > 0;
+  $("#drop").style.display = has ? "none" : "";
+  $("#toolbar").style.display = has ? "" : "none";
+  $("#legend").style.display = has ? "" : "none";
+  const done = items.filter(i => i.status === "done").length;
+  $("#count").textContent = "문제 " + items.length + "개 · 인식 완료 " + done + "개";
+  $("#progBar").style.width = items.length ? (done / items.length * 100) + "%" : "0";
+
+  items.forEach((it, idx) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <div class="hd">
+        <span class="no">문제 ${idx + 1}</span>${chip(it)}
+        <span class="spacer"></span>
+        <button class="ghost sm" data-a="ocr">인식</button>
+        <button class="ghost sm" data-a="ins">이 문제만 삽입</button>
+        <button class="ghost sm" data-a="pic" title="인식 결과 대신 캡쳐 그림을 그대로 넣습니다">이미지로 삽입</button>
+        <button class="ghost sm" data-a="fold">접기</button>
+        <button class="ghost sm" data-a="del">삭제</button>
+      </div>
+      ${it.error ? '<div class="err-msg">' + it.error + '</div>' : ''}
+      <div class="bd">
+        <div class="thumb"><img src="${it.image}" alt=""></div>
+        <textarea spellcheck="false" placeholder="[인식] 을 누르면 여기에 나옵니다."></textarea>
+        <div class="paper"></div>
+      </div>`;
+    const ta = card.querySelector("textarea");
+    ta.value = it.markup;
+    let t;
+    ta.addEventListener("input", () => {
+      it.markup = ta.value;
+      clearTimeout(t); t = setTimeout(() => paint(it, card.querySelector(".paper")), 320);
+    });
+    card.querySelector(".thumb img").onclick = () => {
+      $("#lightbox img").src = it.image; $("#lightbox").classList.add("show"); };
+    card.querySelector('[data-a="ocr"]').onclick = () => ocrOne(it);
+    card.querySelector('[data-a="ins"]').onclick = () => insert([it]);
+    card.querySelector('[data-a="pic"]').onclick = async e => {
+      const b = e.target; b.disabled = true;
+      try{ await api("/api/insert-image", {image: it.image, doc: targetDoc()});
+           toast("이미지를 그대로 넣었습니다.", "ok"); }
+      catch(err){ toast(err.message, "err"); }
+      finally{ b.disabled = false; }
+    };
+    card.querySelector('[data-a="fold"]').onclick = e => {
+      card.classList.toggle("folded");
+      e.target.textContent = card.classList.contains("folded") ? "펴기" : "접기"; };
+    card.querySelector('[data-a="del"]').onclick = () => {
+      items = items.filter(x => x !== it); render(); };
+    list.appendChild(card);
+    paint(it, card.querySelector(".paper"));
+  });
+}
+$("#lightbox").onclick = () => $("#lightbox").classList.remove("show");
+
+/* ---------- 미리보기 ---------- */
+function tex(el, latex, display){
+  if(window.katex){
+    try{ katex.render(latex, el, {displayMode:!!display, throwOnError:false}); return; }catch(_){}
+  }
+  el.textContent = latex;
+}
+function paintBlocks(host, blocks){
+  const put = (h, r) => {
+    const s = document.createElement("span");
+    if(r.type === "eq") tex(s, r.value, false); else s.textContent = r.value;
+    h.appendChild(s);
+  };
+  for(const b of blocks){
+    if(b.kind === "blank"){ host.insertAdjacentHTML("beforeend", '<div class="blank"></div>'); continue; }
+    const div = document.createElement("div");
+    if(b.kind === "eq"){
+      div.className = "eq";
+      const s = document.createElement("span"); tex(s, b.latex, true); div.appendChild(s);
+    }else if(b.kind === "box"){
+      div.className = "condbox";
+      paintBlocks(div, b.blocks);
+    }else if(b.kind === "table"){
+      div.className = "tblwrap";
+      const t = document.createElement("table");
+      for(const row of b.rows){
+        const tr = document.createElement("tr");
+        for(const cell of row){
+          const td = document.createElement("td");
+          cell.forEach(r => put(td, r));
+          tr.appendChild(td);
+        }
+        t.appendChild(tr);
+      }
+      div.appendChild(t);
+    }else if(b.kind === "choice"){
+      div.className = "choices";
+      for(const runs of b.items){
+        const cell = document.createElement("span");
+        runs.forEach(r => put(cell, r));
+        div.appendChild(cell);
+      }
+    }else{
+      b.runs.forEach(r => put(div, r));
+    }
+    host.appendChild(div);
+  }
+}
+async function paint(it, paper){
+  if(!paper) return;
+  if(!it.markup.trim()){ paper.innerHTML = ""; return; }
+  let d;
+  try{ d = await api("/api/preview", {markup: it.markup}); }catch(_){ return; }
+  paper.innerHTML = "";
+  paintBlocks(paper, d.blocks);
+}
+
+/* ---------- 인식 ---------- */
+async function ocrOne(it){
+  if(it.status === "ocr") return;
+  it.status = "ocr"; it.error = ""; render();
+  try{
+    const d = await api("/api/recognize", {image: it.image});
+    it.markup = d.markup; it.status = "done";
+  }catch(e){
+    it.status = "err"; it.error = e.message;
+  }
+  render();
+}
+async function ocrAll(){
+  const todo = items.filter(i => i.status === "idle" || i.status === "err");
+  if(!todo.length) return toast("인식할 문제가 없습니다.");
+  const n = Math.max(1, Math.min(5, local.para));
+  let cursor = 0;
+  const worker = async () => {
+    while(cursor < todo.length) await ocrOne(todo[cursor++]);
+  };
+  $("#btnOcrAll").disabled = true;
+  await Promise.all(Array.from({length: Math.min(n, todo.length)}, worker));
+  $("#btnOcrAll").disabled = false;
+  const bad = items.filter(i => i.status === "err").length;
+  toast(bad ? (bad + "개 실패 — 실패한 문제만 다시 [모두 인식] 하면 됩니다.") : "모두 인식했습니다.",
+        bad ? "err" : "ok");
+  if(!bad && local.autoIns) insert(items);
+}
+
+/* ---------- 한글에 삽입 ---------- */
+async function insert(list){
+  if(inserting) return;
+  const texts = list.map(i => i.markup).filter(t => t && t.trim());
+  if(!texts.length) return toast("넣을 내용이 없습니다. 먼저 인식하세요.", "err");
+  inserting = true;
+  const b = $("#btnInsertAll"); const label = b.innerHTML;
+  b.disabled = true; b.innerHTML = '<span class="spin"></span>넣는 중…';
+  try{
+    const d = await api("/api/insert", {markups: texts, doc: targetDoc()});
+    toast(d.count + "개를 " + (d.doc ? "〈" + d.doc + "〉 " : "") + "커서 자리에 넣었습니다.", "ok");
+  }catch(e){ toast(e.message, "err"); }
+  finally{ inserting = false; b.disabled = false; b.innerHTML = label; checkHwp(); }
+}
+$("#btnOcrAll").onclick = ocrAll;
+$("#btnInsertAll").onclick = () => insert(items);
+$("#btnClear").onclick = () => { if(confirm("모두 지울까요?")){ items = []; render(); } };
+$("#btnFold").onclick = () => {
+  const fold = !document.querySelector(".card.folded");
+  document.querySelectorAll(".card").forEach(c => {
+    c.classList.toggle("folded", fold);
+    c.querySelector('[data-a="fold"]').textContent = fold ? "펴기" : "접기"; });
+  $("#btnFold").textContent = fold ? "모두 펴기" : "모두 접기";
+};
+window.addEventListener("keydown", e => {
+  if(e.ctrlKey && e.key === "Enter"){ e.preventDefault(); insert(items); }
+});
+$("#btnQuit").onclick = async () => {
+  if(!confirm("앱을 끝낼까요? 이 화면은 닫아도 됩니다.")) return;
+  try{ await api("/api/quit", {}); }catch(_){}
+  document.body.innerHTML =
+    '<div style="padding:60px;text-align:center;color:#9aa3b2">끝냈습니다. 이 탭을 닫으세요.</div>';
+};
+
+/* ---------- 한글 상태 ---------- */
+function targetDoc(){
+  const v = $("#docSel").value;
+  return v === "" ? null : parseInt(v, 10);
+}
+async function checkHwp(){
+  const b = $("#hwpBadge"), sel = $("#docSel");
+  try{
+    const d = await api("/api/hwp");
+    if(d.connected){
+      b.className = "badge on";
+      b.textContent = d.active ? ("한글: " + d.active) : "한글 연결됨";
+      const keep = sel.value;
+      sel.innerHTML = "";
+      (d.docs || []).forEach(doc => {
+        const o = document.createElement("option");
+        o.value = doc.index;
+        o.textContent = doc.name + (doc.active ? "  (지금 보고 있는 문서)" : "");
+        sel.appendChild(o);
+      });
+      const active = (d.docs || []).find(x => x.active);
+      sel.value = (keep !== "" && [...sel.options].some(o => o.value === keep))
+        ? keep : (active ? String(active.index) : "");
+      $("#btnDiag").style.display = "none";
+      $("#btnLaunch").style.display = "none";
+    }else{
+      b.className = "badge off"; b.textContent = "한글 없음";
+      sel.innerHTML = '<option value="">한글을 먼저 열어 주세요</option>';
+      $("#btnDiag").style.display = "";
+      $("#btnLaunch").style.display = "";
+    }
+  }catch(_){
+    b.className = "badge off"; b.textContent = "한글 확인 실패";
+    $("#btnDiag").style.display = "";
+  }
+}
+$("#btnDocs").onclick = () => { checkHwp(); toast("문서 목록을 새로 읽었습니다."); };
+$("#btnDiag").onclick = async () => {
+  const b = $("#btnDiag"); b.disabled = true;
+  try{ const d = await api("/api/diagnose", {}); alert(d.report); }
+  catch(e){ alert("진단 실패\n\n" + e.message); }
+  finally{ b.disabled = false; }
+};
+$("#btnLaunch").onclick = async () => {
+  if(!confirm("이 앱 전용 한글 창을 새로 엽니다.\n" +
+              "그 창에서 문제를 담을 파일을 열고 작업하세요.\n\n" +
+              "(이미 열려 있는 한글을 못 찾을 때 쓰는 방법입니다)")) return;
+  const b = $("#btnLaunch"); b.disabled = true; b.textContent = "여는 중…";
+  try{ await api("/api/hwp-launch", {}); await checkHwp(); toast("한글 창을 열었습니다.", "ok"); }
+  catch(e){ toast(e.message, "err"); }
+  finally{ b.disabled = false; b.textContent = "새 한글 창 열기"; }
+};
+
+/* ---------- 설정 ---------- */
+async function loadConf(){
+  const c = await api("/api/config");
+  $("#cModel").value = c.model; $("#cSize").value = c.eq_size;
+  $("#cAlign").value = c.eq_align; $("#cIndent").value = c.eq_indent_mm;
+  $("#cSep").value = c.choice_sep; $("#cHint").value = c.hint || "";
+  $("#cGap").value = c.problem_gap;
+  $("#cUpdate").value = c.update_url || "";
+  $("#cB1").checked = c.blank_before_eq; $("#cB2").checked = c.blank_after_eq;
+  $("#cKey").placeholder = c.api_key_set ? "저장돼 있음 (바꿀 때만 입력)" : "여기에 API 키를 넣으세요";
+  $("#cAutoOcr").checked = local.autoOcr; $("#cAutoIns").checked = local.autoIns;
+  $("#cPara").value = String(local.para);
+  return c;
+}
+$("#btnSettings").onclick = async () => { await loadConf(); $("#dlg").showModal(); };
+$("#cCancel").onclick = () => $("#dlg").close();
+$("#cTest").onclick = async () => {
+  const b = $("#cTest"); b.disabled = true; b.textContent = "점검 중…";
+  try{ const d = await api("/api/selftest", {}); alert(d.report); checkHwp(); }
+  catch(e){ alert("점검 실패\n\n" + e.message); }
+  finally{ b.disabled = false; b.textContent = "한글 연결 점검"; }
+};
+$("#cSave").onclick = async () => {
+  try{
+    await api("/api/config", {
+      api_key: $("#cKey").value, model: $("#cModel").value, eq_size: $("#cSize").value,
+      eq_align: $("#cAlign").value, eq_indent_mm: $("#cIndent").value,
+      choice_sep: $("#cSep").value, hint: $("#cHint").value, problem_gap: $("#cGap").value,
+      update_url: $("#cUpdate").value.trim(),
+      blank_before_eq: $("#cB1").checked, blank_after_eq: $("#cB2").checked });
+    local.autoOcr = $("#cAutoOcr").checked;
+    local.autoIns = $("#cAutoIns").checked;
+    local.para = parseInt($("#cPara").value, 10);
+    $("#cKey").value = ""; $("#dlg").close(); toast("저장했습니다.", "ok"); checkVersion();
+    items.forEach((it, i) => paint(it, document.querySelectorAll(".paper")[i]));
+  }catch(e){ toast(e.message, "err"); }
+};
+
+/* ---------- 시작 ---------- */
+/* ---------- 판 번호 / 자동 업데이트 ---------- */
+async function checkVersion(){
+  let d;
+  try{ d = await api("/api/version", {check: true}); }catch(_){ return; }
+  $("#verBadge").textContent = "v" + d.version;
+  if(d.latest){
+    $("#upmsg").textContent =
+      "새 버전 v" + d.latest.version + " 이 나왔습니다." + (d.latest.notes ? "  " + d.latest.notes : "");
+    $("#upbar").style.display = "block";
+  }
+}
+$("#btnUpLater").onclick = () => { $("#upbar").style.display = "none"; };
+$("#btnUpdate").onclick = async () => {
+  const b = $("#btnUpdate"); b.disabled = true; b.textContent = "받는 중…";
+  try{
+    const d = await api("/api/update", {});
+    if(d.updated){
+      document.body.innerHTML =
+        '<div style="padding:70px;text-align:center;color:#9aa3b2;font-size:15px">' +
+        'v' + d.version + ' 으로 업데이트했습니다.<br><br>' +
+        '앱이 스스로 다시 켜집니다. 잠시 뒤 이 화면을 새로고침(F5) 하세요.</div>';
+    }else{
+      toast("이미 최신입니다.", "ok"); $("#upbar").style.display = "none";
+    }
+  }catch(e){ toast(e.message, "err"); }
+  finally{ b.disabled = false; b.textContent = "지금 업데이트"; }
+};
+
+setInterval(checkHwp, 20000);      // 서버가 살아 있는지 주기적으로 확인
+(async () => {
+  checkHwp();
+  checkVersion();
+  const c = await loadConf().catch(() => null);
+  if(c && !c.api_key_set){ $("#dlg").showModal(); toast("먼저 Gemini API 키를 넣어 주세요."); }
+})();
+</script>
+</body>
+</html>
