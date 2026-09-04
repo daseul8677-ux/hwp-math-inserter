@@ -1,5 +1,5 @@
 {
-    "version":  "1.1.4",
-    "url":  "https://github.com/daseul8677-ux/hwp-math-inserter/releases/download/v1.1.4/HwpMathInserter.exe",
-    "notes":  "unblock downloaded file so the app can restart itself"
+    "version":  "1.1.5",
+    "url":  "https://github.com/daseul8677-ux/hwp-math-inserter/releases/download/v1.1.5/HwpMathInserter.exe",
+    "notes":  "restart via explorer after update"
 }

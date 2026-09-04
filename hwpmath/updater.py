@@ -164,8 +164,16 @@ def apply_and_restart(new_exe):
         "Say \"moved=$ok\"\n"
         "if ($ok) {\n"
         "  try { Unblock-File -LiteralPath $dst -ErrorAction SilentlyContinue } catch {}\n"
-        "  try { Start-Process -FilePath $dst -WorkingDirectory (Split-Path -Parent $dst); Say 'relaunched' }\n"
-        "  catch { Say \"relaunch failed: $_\" }\n"
+        # explorer 로 띄운다. 우리 프로세스 사슬에서 완전히 떨어져 나가,
+        # 사용자가 직접 더블클릭한 것과 같은 상태로 실행된다.
+        "  try { Start-Process -FilePath 'explorer.exe' -ArgumentList \"`\"$dst`\"\"; Say 'relaunched via explorer' }\n"
+        "  catch { Say \"explorer failed: $_\" }\n"
+        "  Start-Sleep -Seconds 12\n"
+        "  $running = Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($dst)) -ErrorAction SilentlyContinue\n"
+        "  if (-not $running) {\n"
+        "    Say 'not running - trying direct start'\n"
+        "    try { Start-Process -FilePath $dst; Say 'direct start ok' } catch { Say \"direct start failed: $_\" }\n"
+        "  } else { Say 'confirmed running' }\n"
         "} else { Say 'move failed' }\n"
     ) % (_ps_quote(log), _ps_quote(new_exe), _ps_quote(target))
 
