@@ -53,7 +53,8 @@ DEFAULTS = {
     "choice_sep": "tab",
     "choice_spaces": 6,
     "problem_gap": 1,
-    "update_url": "",
+    "update_url": ("https://raw.githubusercontent.com/"
+                   "daseul8677-ux/hwp-math-inserter/main/latest.json"),
     "hint": "",
 }
 
