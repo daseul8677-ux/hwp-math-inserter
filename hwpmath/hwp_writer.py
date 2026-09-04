@@ -90,7 +90,27 @@ class HwpWriter(object):
                 except Exception as e:
                     self._attach_errors.append("%s(%s) 연결 실패: %s" % (name, how, e))
 
-        # 목록에서 못 찾으면 표준 방식도 한 번 시도한다
+        # 이름으로 못 찾으면, 실행 중인 개체를 하나씩 붙여 보고 한글인지 확인한다.
+        # (한글 버전에 따라 등록 이름이 다를 수 있다)
+        for moniker in rot:
+            try:
+                name = moniker.GetDisplayName(ctx, None)
+            except Exception:
+                name = "<이름 없음>"
+            if "hwpobject" in name.lower():
+                continue                              # 위에서 이미 해 봤다
+            if "personal-monikers" in name.lower():
+                continue                              # 윈도우 기본 항목, 건너뛴다
+            try:
+                unk = rot.GetObject(moniker)
+                obj = dynamic.Dispatch(unk.QueryInterface(pythoncom.IID_IDispatch))
+                obj.XHwpDocuments.Count               # 한글이면 이게 된다
+                self._attach_errors.append("이름은 달랐지만 한글로 확인됨: %s" % name)
+                return obj
+            except Exception:
+                continue
+
+        # 표준 방식도 한 번 시도한다
         try:
             return win32.GetActiveObject("HWPFrame.HwpObject")
         except Exception as e:
@@ -155,6 +175,30 @@ class HwpWriter(object):
                 "권한이 다르면 서로를 보지 못합니다. 둘 다 그냥 더블클릭으로 실행하세요.")
         return info
 
+    # 한글 자동화 개체의 고유 번호. 등록 이름이 없는 컴퓨터에서도 이걸로 만들 수 있다.
+    HWP_CLSID = "{2291CF00-64A1-4877-A9B4-68CFE89612D6}"
+
+    def _new_hwp(self):
+        """한글을 새로 띄운다. 이름으로 안 되면 고유 번호(CLSID)로 만든다."""
+        errors = []
+        for progid in ("HWPFrame.HwpObject", "HWPFrame.HwpObject.1",
+                       "HWPFrame.HwpObject.2"):
+            try:
+                return win32.Dispatch(progid)
+            except Exception as e:
+                errors.append("%s: %s" % (progid, e))
+        try:
+            import pythoncom
+            from win32com.client import dynamic
+            disp = pythoncom.CoCreateInstance(
+                pythoncom.MakeIID(self.HWP_CLSID), None,
+                pythoncom.CLSCTX_LOCAL_SERVER | pythoncom.CLSCTX_INPROC_SERVER,
+                pythoncom.IID_IDispatch)
+            return dynamic.Dispatch(disp)
+        except Exception as e:
+            errors.append("CLSID: %s" % e)
+        raise HwpError("한글을 실행하지 못했습니다.\n" + "\n".join(errors))
+
     def _alive(self):
         if self.hwp is None:
             return False
@@ -179,11 +223,11 @@ class HwpWriter(object):
                     "한글에서 문서를 하나 열어 주세요. "
                     "(한글은 빈 시작 화면만 떠 있으면 다른 프로그램에 보이지 않습니다. "
                     "문서를 연 뒤 [새로고침] 을 눌러 주세요)")
+            self.hwp = self._new_hwp()
             try:
-                self.hwp = win32.Dispatch("HWPFrame.HwpObject")
                 self.hwp.XHwpWindows.Item(0).Visible = True
-            except Exception as e:
-                raise HwpError("한글을 실행하지 못했습니다: %s" % e)
+            except Exception:
+                pass
 
         if not self._registered:
             try:

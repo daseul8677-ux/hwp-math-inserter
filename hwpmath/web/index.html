@@ -154,7 +154,7 @@
     <select id="docSel"><option value="">한글 확인 중…</option></select>
     <button class="ghost sm" id="btnDocs">새로고침</button>
     <button class="ghost sm" id="btnDiag" style="display:none">왜 못 찾나요?</button>
-    <button class="ghost sm" id="btnLaunch" style="display:none">새 한글 창 열기</button>
+    <button class="ghost sm" id="btnLaunch" style="display:none">한글 강제 연결</button>
     <span class="dimnote">한글에서 그 문서의 원하는 자리에 커서를 두고 넣으세요</span>
   </div>
 
@@ -551,13 +551,13 @@ $("#btnDiag").onclick = async () => {
   finally{ b.disabled = false; }
 };
 $("#btnLaunch").onclick = async () => {
-  if(!confirm("이 앱 전용 한글 창을 새로 엽니다.\n" +
-              "그 창에서 문제를 담을 파일을 열고 작업하세요.\n\n" +
-              "(이미 열려 있는 한글을 못 찾을 때 쓰는 방법입니다)")) return;
+  if(!confirm("앱이 직접 다루는 한글 창을 엽니다.\n" +
+              "그 창에서 [파일 → 열기] 로 문제를 담을 파일을 열고 작업하세요.\n\n" +
+              "이미 떠 있던 한글 창은 닫아 주세요. (같은 파일을 두 창에서 열면 충돌합니다)")) return;
   const b = $("#btnLaunch"); b.disabled = true; b.textContent = "여는 중…";
-  try{ await api("/api/hwp-launch", {}); await checkHwp(); toast("한글 창을 열었습니다.", "ok"); }
-  catch(e){ toast(e.message, "err"); }
-  finally{ b.disabled = false; b.textContent = "새 한글 창 열기"; }
+  try{ await api("/api/hwp-launch", {}); await checkHwp(); toast("한글 창을 열었습니다. 여기에 파일을 여세요.", "ok"); }
+  catch(e){ alert("강제 연결 실패\n\n" + e.message); }
+  finally{ b.disabled = false; b.textContent = "한글 강제 연결"; }
 };
 
 /* ---------- 설정 ---------- */
