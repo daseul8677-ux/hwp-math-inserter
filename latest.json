@@ -1,5 +1,5 @@
 {
-    "version":  "1.1.6",
-    "url":  "https://github.com/daseul8677-ux/hwp-math-inserter/releases/download/v1.1.6/HwpMathInserter.exe",
-    "notes":  "verify explorer restart"
+    "version":  "1.2.0",
+    "url":  "https://github.com/daseul8677-ux/hwp-math-inserter/releases/download/v1.2.0/HwpMathInserter.exe",
+    "notes":  "verify download integrity, rollback on failure"
 }
