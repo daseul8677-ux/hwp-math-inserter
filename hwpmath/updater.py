@@ -11,6 +11,7 @@ latest.json 모양:
      "notes": "무엇이 바뀌었는지 한 줄"}
 """
 
+import base64
 import json
 import os
 import subprocess
@@ -124,31 +125,39 @@ def download(url, dest):
 
 
 def apply_and_restart(new_exe):
-    """앱을 끄고, 새 파일로 바꾼 뒤 다시 켠다."""
+    """앱을 끄고, 새 파일로 바꾼 뒤 다시 켠다.
+
+    배치(.bat) 파일은 쓰지 않는다. cmd 가 배치 파일을 옛 문자표(CP949)로 읽어서
+    경로에 한글이 있으면 깨지기 때문이다.
+    대신 PowerShell 에 UTF-16 으로 인코딩한 명령을 넘긴다 — 문자표 문제가 없다.
+    """
     if not is_frozen():
         raise UpdateError("설치본(exe)에서만 업데이트할 수 있습니다.")
     target = exe_path()
-    bat = os.path.join(tempfile.gettempdir(), "hwpmath_update_%d.bat" % int(time.time()))
-    script = (
-        '@echo off\r\n'
-        'chcp 65001 > nul\r\n'
-        'ping 127.0.0.1 -n 4 > nul\r\n'                 # 앱이 완전히 꺼질 때까지 잠깐
-        ':wait\r\n'
-        'move /y "%(new)s" "%(target)s" > nul 2>&1\r\n'
-        'if errorlevel 1 (\r\n'
-        '  ping 127.0.0.1 -n 3 > nul\r\n'
-        '  goto wait\r\n'
-        ')\r\n'
-        'start "" "%(target)s"\r\n'
-        'del "%%~f0"\r\n'
-    ) % {"new": new_exe, "target": target}
-    with open(bat, "w", encoding="utf-8") as f:
-        f.write(script)
 
+    ps = (
+        "Start-Sleep -Seconds 3\n"
+        "$src = %s\n"
+        "$dst = %s\n"
+        "for ($i = 0; $i -lt 60; $i++) {\n"
+        "  try { Move-Item -LiteralPath $src -Destination $dst -Force; break }\n"
+        "  catch { Start-Sleep -Seconds 2 }\n"
+        "}\n"
+        "if (Test-Path -LiteralPath $dst) { Start-Process -FilePath $dst }\n"
+    ) % (_ps_quote(new_exe), _ps_quote(target))
+
+    encoded = base64.b64encode(ps.encode("utf-16-le")).decode("ascii")
     creation = 0x00000008 | 0x08000000                  # DETACHED_PROCESS | NO_WINDOW
-    subprocess.Popen(["cmd", "/c", bat], creationflags=creation,
-                     close_fds=True, cwd=tempfile.gettempdir())
-    return bat
+    subprocess.Popen(
+        ["powershell", "-NoProfile", "-NonInteractive",
+         "-WindowStyle", "Hidden", "-EncodedCommand", encoded],
+        creationflags=creation, close_fds=True, cwd=tempfile.gettempdir())
+    return True
+
+
+def _ps_quote(path):
+    """PowerShell 작은따옴표 문자열로 감싼다."""
+    return "'" + str(path).replace("'", "''") + "'"
 
 
 def update_now(url):
