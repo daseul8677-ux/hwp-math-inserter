@@ -147,11 +147,18 @@ def apply_and_restart(new_exe):
     ) % (_ps_quote(new_exe), _ps_quote(target))
 
     encoded = base64.b64encode(ps.encode("utf-16-le")).decode("ascii")
+    powershell = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"),
+                              "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+    if not os.path.exists(powershell):
+        powershell = "powershell"
     creation = 0x00000008 | 0x08000000                  # DETACHED_PROCESS | NO_WINDOW
+    # 창 없는 exe 는 표준 입출력이 없어서, 넘겨줄 것을 명시해야 자식이 뜬다
     subprocess.Popen(
-        ["powershell", "-NoProfile", "-NonInteractive",
-         "-WindowStyle", "Hidden", "-EncodedCommand", encoded],
-        creationflags=creation, close_fds=True, cwd=tempfile.gettempdir())
+        [powershell, "-NoProfile", "-NonInteractive",
+         "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden",
+         "-EncodedCommand", encoded],
+        creationflags=creation, close_fds=True, cwd=tempfile.gettempdir(),
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return True
 
 
