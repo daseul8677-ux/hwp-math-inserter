@@ -164,6 +164,20 @@ class HwpWriter(object):
             info["attach"] = "실패 (%s)" % e
         info["attach_errors"] = list(self._attach_errors)
 
+        try:
+            info["registration"] = self.registration_status()
+        except Exception as e:
+            info["registration"] = {"확인 실패": str(e)}
+        try:
+            info["hwp_programs"] = self.find_hwp_program()
+        except Exception:
+            info["hwp_programs"] = []
+
+        if not any(info.get("registration", {}).values()):
+            info["notes"].append(
+                "★ 이 컴퓨터에는 한글의 자동화 기능이 윈도우에 등록되어 있지 않습니다. "
+                "이것부터 해결해야 합니다. 설정 화면의 [한글 자동화 등록] 을 눌러 주세요.")
+
         if not info["hwp_monikers"]:
             info["notes"].append(
                 "실행 중인 한글이 목록에 없습니다. 아래를 차례로 확인해 주세요.")
@@ -198,6 +212,37 @@ class HwpWriter(object):
         except Exception as e:
             errors.append("CLSID: %s" % e)
         raise HwpError("한글을 실행하지 못했습니다.\n" + "\n".join(errors))
+
+    @staticmethod
+    def find_hwp_program():
+        """설치된 한글 실행 파일(Hword.exe) 을 찾는다."""
+        roots = [os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+                 os.environ.get("ProgramFiles", r"C:\Program Files")]
+        found = []
+        for root in roots:
+            hnc = os.path.join(root, "Hnc")
+            if not os.path.isdir(hnc):
+                continue
+            for dirpath, dirnames, filenames in os.walk(hnc):
+                for name in filenames:
+                    if name.lower() == "hword.exe":
+                        found.append(os.path.join(dirpath, name))
+                if len(found) > 3:
+                    break
+        return found
+
+    @staticmethod
+    def registration_status():
+        """한글 자동화가 윈도우에 등록돼 있는지 확인한다."""
+        import winreg
+        out = {}
+        for progid in ("HWPFrame.HwpObject", "HWPFrame.HwpObject.1"):
+            try:
+                with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, progid + r"\CLSID") as k:
+                    out[progid] = winreg.QueryValueEx(k, "")[0]
+            except OSError:
+                out[progid] = None
+        return out
 
     def _alive(self):
         if self.hwp is None:

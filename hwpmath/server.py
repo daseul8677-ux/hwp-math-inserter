@@ -233,6 +233,13 @@ class Handler(BaseHTTPRequestHandler):
                 lines.append("이 앱이 관리자 권한으로 실행 중: %s" % info.get("admin"))
                 lines.append("한글에 붙기: %s" % info.get("attach"))
                 lines.append("GetActiveObject: %s" % info.get("get_active_object"))
+                reg = info.get("registration") or {}
+                lines.append("한글 자동화 등록: %s" % (
+                    "됨" if any(reg.values()) else "안 됨  ← 이것이 원인입니다"))
+                for k, v in reg.items():
+                    lines.append("  %s = %s" % (k, v if v else "(없음)"))
+                if info.get("hwp_programs"):
+                    lines.append("설치된 한글: %s" % info["hwp_programs"][0])
                 if info.get("attach_errors"):
                     lines.append("")
                     lines.append("연결 실패 사유:")
@@ -250,6 +257,9 @@ class Handler(BaseHTTPRequestHandler):
                     lines.append("")
                     lines += info["notes"]
                 return self._send(200, {"report": "\n".join(lines), "info": info})
+
+            if path == "/api/register-hwp":
+                return self._register_hwp()
 
             if path == "/api/hwp-launch":
                 def job(w):
@@ -355,6 +365,27 @@ class Handler(BaseHTTPRequestHandler):
 
         WORKER.call(job)
         return self._send(200, {"ok": True})
+
+    def _register_hwp(self):
+        """한글 자동화를 윈도우에 등록한다 (관리자 승인 창이 뜬다)."""
+        progs = WORKER.call(lambda w: w.find_hwp_program(), timeout=60)
+        if not progs:
+            return self._send(400, {
+                "error": "한글(Hword.exe) 을 찾지 못했습니다. "
+                         "이 컴퓨터에 한컴오피스 한글이 설치돼 있는지 확인해 주세요."})
+        exe = progs[0]
+        try:
+            import ctypes
+            # ShellExecute 의 runas -> 관리자 권한 요청 창이 뜬다
+            rc = ctypes.windll.shell32.ShellExecuteW(
+                None, "runas", exe, "/regserver", os.path.dirname(exe), 0)
+        except Exception as e:
+            return self._send(500, {"error": "등록을 실행하지 못했습니다: %s" % e})
+        if rc <= 32:
+            if rc == 1223:
+                return self._send(400, {"error": "관리자 승인을 취소하셨습니다. 다시 시도해 주세요."})
+            return self._send(400, {"error": "등록을 실행하지 못했습니다 (코드 %s)." % rc})
+        return self._send(200, {"ok": True, "exe": exe})
 
     def _config(self, data):
         conf = cfg.load()

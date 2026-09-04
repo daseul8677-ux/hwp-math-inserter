@@ -154,6 +154,8 @@
     <select id="docSel"><option value="">한글 확인 중…</option></select>
     <button class="ghost sm" id="btnDocs">새로고침</button>
     <button class="ghost sm" id="btnDiag" style="display:none">왜 못 찾나요?</button>
+    <button class="ghost sm" id="btnRegister" style="display:none"
+            title="한글의 자동화 기능을 윈도우에 등록합니다 (관리자 승인 필요)">한글 자동화 등록</button>
     <button class="ghost sm" id="btnLaunch" style="display:none">한글 강제 연결</button>
     <span class="dimnote">한글에서 그 문서의 원하는 자리에 커서를 두고 넣으세요</span>
   </div>
@@ -532,11 +534,13 @@ async function checkHwp(){
         ? keep : (active ? String(active.index) : "");
       $("#btnDiag").style.display = "none";
       $("#btnLaunch").style.display = "none";
+      $("#btnRegister").style.display = "none";
     }else{
       b.className = "badge off"; b.textContent = "한글 없음";
       sel.innerHTML = '<option value="">한글을 먼저 열어 주세요</option>';
       $("#btnDiag").style.display = "";
       $("#btnLaunch").style.display = "";
+      $("#btnRegister").style.display = "";
     }
   }catch(_){
     b.className = "badge off"; b.textContent = "한글 확인 실패";
@@ -549,6 +553,20 @@ $("#btnDiag").onclick = async () => {
   try{ const d = await api("/api/diagnose", {}); alert(d.report); }
   catch(e){ alert("진단 실패\n\n" + e.message); }
   finally{ b.disabled = false; }
+};
+$("#btnRegister").onclick = async () => {
+  if(!confirm("한글의 자동화 기능을 윈도우에 등록합니다.\n\n" +
+              "· 관리자 승인 창이 뜹니다. [예] 를 눌러 주세요.\n" +
+              "· 한글이 열려 있으면 먼저 닫아 주세요.\n" +
+              "· 등록이 끝나면 한글을 다시 열고 [새로고침] 을 누르세요.")) return;
+  const b = $("#btnRegister"); b.disabled = true; b.textContent = "등록 중…";
+  try{
+    const d = await api("/api/register-hwp", {});
+    alert("등록을 실행했습니다.\n\n" + d.exe + "\n\n" +
+          "관리자 승인 창에서 [예] 를 누르셨다면 잠시 뒤 끝납니다.\n" +
+          "한글을 열고 문서를 하나 띄운 뒤 [새로고침] 을 눌러 주세요.");
+  }catch(e){ alert("등록 실패\n\n" + e.message); }
+  finally{ b.disabled = false; b.textContent = "한글 자동화 등록"; }
 };
 $("#btnLaunch").onclick = async () => {
   if(!confirm("앱이 직접 다루는 한글 창을 엽니다.\n" +
