@@ -617,9 +617,11 @@ $("#btnUpdate").onclick = async () => {
     const d = await api("/api/update", {});
     if(d.updated){
       document.body.innerHTML =
-        '<div style="padding:70px;text-align:center;color:#9aa3b2;font-size:15px">' +
-        'v' + d.version + ' 으로 업데이트했습니다.<br><br>' +
-        '앱이 스스로 다시 켜집니다. 잠시 뒤 이 화면을 새로고침(F5) 하세요.</div>';
+        '<div style="padding:70px;text-align:center;color:#9aa3b2;font-size:15px;line-height:2">' +
+        '<b style="color:#bdf3dc">v' + d.version + ' 으로 업데이트했습니다.</b><br><br>' +
+        '앱이 스스로 다시 켜집니다. 10초쯤 뒤 이 화면을 새로고침(F5) 하세요.<br><br>' +
+        '<span style="color:#727c8c">새로고침해도 "연결할 수 없습니다" 가 나오면,<br>' +
+        '문제캡쳐한글삽입기.exe 를 한 번 더블클릭해 주세요. 파일은 이미 새 버전입니다.</span></div>';
     }else{
       toast("이미 최신입니다.", "ok"); $("#upbar").style.display = "none";
     }

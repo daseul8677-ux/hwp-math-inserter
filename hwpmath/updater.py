@@ -121,7 +121,20 @@ def download(url, dest):
         except OSError:
             pass
         raise UpdateError("받은 파일이 온전하지 않습니다(%d바이트)." % size)
+    _unblock(dest)
     return dest
+
+
+def _unblock(path):
+    """인터넷에서 받은 표시(차단 표시)를 지운다.
+
+    이게 남아 있으면 윈도우가 실행을 막거나 경고창을 띄워서,
+    업데이트 뒤 앱이 스스로 다시 켜지지 못한다.
+    """
+    try:
+        os.remove(path + ":Zone.Identifier")
+    except OSError:
+        pass
 
 
 def apply_and_restart(new_exe):
@@ -149,8 +162,11 @@ def apply_and_restart(new_exe):
         "  catch { Start-Sleep -Seconds 2 }\n"
         "}\n"
         "Say \"moved=$ok\"\n"
-        "if ($ok) { Start-Process -FilePath $dst; Say 'relaunched' }\n"
-        "else { Say 'move failed' }\n"
+        "if ($ok) {\n"
+        "  try { Unblock-File -LiteralPath $dst -ErrorAction SilentlyContinue } catch {}\n"
+        "  try { Start-Process -FilePath $dst -WorkingDirectory (Split-Path -Parent $dst); Say 'relaunched' }\n"
+        "  catch { Say \"relaunch failed: $_\" }\n"
+        "} else { Say 'move failed' }\n"
     ) % (_ps_quote(log), _ps_quote(new_exe), _ps_quote(target))
 
     encoded = base64.b64encode(ps.encode("utf-16-le")).decode("ascii")
